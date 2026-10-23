@@ -223,3 +223,66 @@ def simulate_divergence(
     sep = np.hypot(per.theta1 - ref.theta1, per.theta2 - ref.theta2)
     rate, window = estimate_growth_rate(ref.t, sep, sep_max=sep_max)
     return DivergenceResult(ref.t, sep, rate, window, ref, per)
+
+
+# ---------------------------------------------------------------------------
+# UI helpers (no Streamlit dependency)
+# ---------------------------------------------------------------------------
+
+MAX_DURATION = 60.0  # s; beyond this chaotic trajectories are not meaningful anyway
+MIN_PERTURBATION = 1e-10  # rad; below ~ solver tolerance the comparison is meaningless
+MAX_PERTURBATION = 1.0  # rad
+MAX_OUTPUT_POINTS = 20000
+
+
+def validate_inputs(m1, m2, L1, L2, g, theta1_0, theta2_0, t_end, n_points, delta) -> list[str]:
+    """Return human-readable problems with the inputs (empty list if valid)."""
+    errors: list[str] = []
+
+    def bad_pos(v):
+        return v is None or not np.isfinite(v) or v <= 0
+
+    for name, val in [("Mass 1", m1), ("Mass 2", m2), ("Rod length 1", L1),
+                      ("Rod length 2", L2), ("Gravity", g)]:
+        if bad_pos(val):
+            errors.append(f"{name} must be a positive, finite number.")
+    for name, val in [("Angle 1", theta1_0), ("Angle 2", theta2_0)]:
+        if val is None or not np.isfinite(val):
+            errors.append(f"{name} must be a finite number.")
+    if bad_pos(t_end) or t_end > MAX_DURATION:
+        errors.append(f"Duration must be positive and at most {MAX_DURATION:g} s.")
+    if not (2 <= n_points <= MAX_OUTPUT_POINTS):
+        errors.append(f"Number of output points must be between 2 and {MAX_OUTPUT_POINTS}.")
+    if delta is None or not np.isfinite(delta) or not (MIN_PERTURBATION <= abs(delta) <= MAX_PERTURBATION):
+        errors.append(
+            f"Perturbation must have magnitude between {MIN_PERTURBATION:g} and {MAX_PERTURBATION:g} rad."
+        )
+    return errors
+
+
+def animation_frame_indices(n_samples: int, max_frames: int = 300) -> np.ndarray:
+    """Evenly spaced sample indices (always including first and last)."""
+    if n_samples < 1 or max_frames < 2:
+        raise ValueError("n_samples >= 1 and max_frames >= 2 required.")
+    n = min(n_samples, max_frames)
+    return np.unique(np.linspace(0, n_samples - 1, n).round().astype(int))
+
+
+def divergence_to_dataframe(div: DivergenceResult):
+    """Tabulate both trajectories and their separation (SI units, radians)."""
+    import pandas as pd
+
+    r, q = div.reference, div.perturbed
+    cols = {"t_s": r.t}
+    for tag, res in (("ref", r), ("pert", q)):
+        cols.update({
+            f"theta1_{tag}_rad": res.theta1, f"theta2_{tag}_rad": res.theta2,
+            f"omega1_{tag}_rad_s": res.omega1, f"omega2_{tag}_rad_s": res.omega2,
+            f"x1_{tag}_m": res.x1, f"y1_{tag}_m": res.y1,
+            f"x2_{tag}_m": res.x2, f"y2_{tag}_m": res.y2,
+            f"kinetic_{tag}_J": res.kinetic, f"potential_{tag}_J": res.potential,
+            f"total_energy_{tag}_J": res.energy,
+            f"relative_energy_drift_{tag}": res.energy_drift,
+        })
+    cols["angular_separation_rad"] = div.separation
+    return pd.DataFrame(cols)

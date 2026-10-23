@@ -14,7 +14,7 @@ def home() -> None:
     st.subheader("Simulations")
     st.markdown(
         "- **Two-body orbital mechanics** — interactive page available.\n"
-        "- **Double pendulum** — planned.\n"
+        "- **Double pendulum** — interactive page available.\n"
         "- **Electric fields from point charges** — planned."
     )
 
@@ -24,6 +24,7 @@ pg = st.navigation(
     [
         st.Page(home, title="Home", icon="🏠", default=True),
         st.Page("pages/orbital_page.py", title="Orbital Mechanics", icon="🪐"),
+        st.Page("pages/pendulum_page.py", title="Double Pendulum", icon="🌀"),
     ]
 )
 pg.run()
