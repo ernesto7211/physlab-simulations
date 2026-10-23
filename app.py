@@ -13,13 +13,17 @@ def home() -> None:
     )
     st.subheader("Simulations")
     st.markdown(
-        "- **Two-body orbital mechanics** — core solver implemented and tested; "
-        "interactive page coming in a later step.\n"
+        "- **Two-body orbital mechanics** — interactive page available.\n"
         "- **Double pendulum** — planned.\n"
         "- **Electric fields from point charges** — planned."
     )
 
 
-# Later steps add st.Page entries for each simulation here.
-pg = st.navigation([st.Page(home, title="Home", icon="🏠", default=True)])
+# Later steps add st.Page entries for the remaining simulations here.
+pg = st.navigation(
+    [
+        st.Page(home, title="Home", icon="🏠", default=True),
+        st.Page("pages/orbital_page.py", title="Orbital Mechanics", icon="🪐"),
+    ]
+)
 pg.run()

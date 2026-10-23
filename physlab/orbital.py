@@ -156,3 +156,105 @@ def simulate_two_body(
         success=bool(sol.success),
         message=str(sol.message),
     )
+
+
+# ---------------------------------------------------------------------------
+# Analytic orbit characterisation and UI helpers
+# ---------------------------------------------------------------------------
+
+PARABOLIC_TOL = 1e-9  # |E| / |U| below this is classed as parabolic
+MAX_OUTPUT_POINTS = 20000
+MAX_PERIODS = 200  # cap on simulated duration for bound orbits
+
+
+@dataclass(frozen=True)
+class OrbitElements:
+    """Analytic orbit properties from the initial state (relative coordinate)."""
+
+    kind: str  # "bound", "parabolic", or "unbound"
+    specific_energy: float  # J/kg
+    specific_angular_momentum: float  # m^2/s
+    eccentricity: float
+    semi_major_axis: float | None  # m; None for parabolic
+    period: float | None  # s; bound only
+    periapsis: float  # m
+    apoapsis: float | None  # m; bound only
+
+
+def orbit_elements(m1: float, m2: float, r0, v0) -> OrbitElements:
+    """Classify the orbit and compute its elements from the initial state."""
+    mu = gravitational_parameter(m1, m2)
+    r0 = np.asarray(r0, dtype=float)
+    v0 = np.asarray(v0, dtype=float)
+    r = float(np.linalg.norm(r0))
+    v2 = float(v0 @ v0)
+    eps = 0.5 * v2 - mu / r
+    h = float(abs(r0[0] * v0[1] - r0[1] * v0[0]))
+    e = float(np.sqrt(max(0.0, 1.0 + 2.0 * eps * h * h / mu**2)))
+
+    if abs(eps) <= PARABOLIC_TOL * mu / r:
+        kind, a = "parabolic", None
+        peri = h * h / (2.0 * mu)
+    else:
+        a = -mu / (2.0 * eps)
+        kind = "bound" if eps < 0 else "unbound"
+        peri = a * (1.0 - e)
+        if a < 0:  # hyperbola: a<0 and e>1 give positive periapsis
+            peri = abs(a) * (e - 1.0)
+    if kind == "bound":
+        return OrbitElements(kind, eps, h, e, a, kepler_period(m1, m2, a), peri, a * (1.0 + e))
+    return OrbitElements(kind, eps, h, e, a, None, peri, None)
+
+
+def validate_inputs(m1, m2, r0, v0, t_end, n_points) -> list[str]:
+    """Return human-readable problems with the inputs (empty list if valid)."""
+    errors: list[str] = []
+    for name, val in [
+        ("Central mass", m1),
+        ("Orbiting mass", m2),
+        ("Initial distance", r0),
+        ("Duration", t_end),
+    ]:
+        if val is None or not np.isfinite(val) or val <= 0:
+            errors.append(f"{name} must be a positive, finite number.")
+    if v0 is None or not np.isfinite(v0) or v0 < 0:
+        errors.append("Initial speed must be a finite, non-negative number.")
+    if not (2 <= n_points <= MAX_OUTPUT_POINTS):
+        errors.append(f"Number of output points must be between 2 and {MAX_OUTPUT_POINTS}.")
+    if errors:
+        return errors
+
+    if v0 == 0:
+        errors.append("Initial speed of zero is a radial plunge (collision); choose a non-zero speed.")
+        return errors
+    el = orbit_elements(m1, m2, [r0, 0.0], [0.0, v0])
+    if el.periapsis < 1e-3 * r0:
+        errors.append(
+            "Periapsis is below 0.1% of the initial distance: the orbit is nearly radial "
+            "and the point-mass model becomes stiff. Increase the initial speed."
+        )
+    if el.kind == "bound" and el.period is not None and t_end > MAX_PERIODS * el.period:
+        errors.append(
+            f"Duration exceeds {MAX_PERIODS} orbital periods ({MAX_PERIODS * el.period:.4g} s); shorten it."
+        )
+    return errors
+
+
+def result_to_dataframe(res: OrbitResult):
+    """Tabulate an :class:`OrbitResult` (SI units) for display or CSV export."""
+    import pandas as pd
+
+    return pd.DataFrame(
+        {
+            "t_s": res.t,
+            "x_m": res.position[:, 0],
+            "y_m": res.position[:, 1],
+            "vx_m_s": res.velocity[:, 0],
+            "vy_m_s": res.velocity[:, 1],
+            "kinetic_J": res.kinetic,
+            "potential_J": res.potential,
+            "total_energy_J": res.energy,
+            "angular_momentum_kg_m2_s": res.angular_momentum,
+            "relative_energy_drift": res.energy_drift,
+        }
+    )
