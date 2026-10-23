@@ -6,6 +6,8 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from physlab import orbital as ob
+from physlab import theme as th
+from physlab.ui import page_header
 
 # Earth-like defaults (SI internally; UI uses kg, km, km/s, hours)
 M_EARTH = 5.972e24
@@ -39,7 +41,7 @@ def _init_state() -> None:
         _apply_preset()
 
 
-st.title("Two-Body Orbital Mechanics")
+page_header("orbital", "Two bodies under Newtonian gravity, reduced to the relative coordinate (SI units internally).")
 _init_state()
 
 with st.sidebar:
@@ -99,16 +101,22 @@ if el.kind == "bound" and el.period and t_end < el.period:
 # --- orbit path ------------------------------------------------------------
 x, y = res.position[:, 0] / KM, res.position[:, 1] / KM
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="Orbit path", line=dict(color="#1f77b4")))
-fig.add_trace(go.Scatter(x=[x[0]], y=[y[0]], mode="markers", name="Start", marker=dict(color="green", size=10)))
-fig.add_trace(go.Scatter(x=[x[-1]], y=[y[-1]], mode="markers", name="End", marker=dict(color="red", size=10, symbol="square")))
-fig.add_trace(go.Scatter(x=[0], y=[0], mode="markers", name="Central body", marker=dict(color="orange", size=16, symbol="circle")))
+fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="Orbit path", line=dict(color=th.BLUE)))
+fig.add_trace(go.Scatter(x=[x[0]], y=[y[0]], mode="markers", name="Start",
+                         marker=dict(color=th.BLUISH_GREEN, size=11, symbol="circle", line=dict(color="black", width=1))))
+fig.add_trace(go.Scatter(x=[x[-1]], y=[y[-1]], mode="markers", name="End",
+                         marker=dict(color=th.VERMILLION, size=11, symbol="square", line=dict(color="black", width=1))))
+fig.add_trace(go.Scatter(x=[0], y=[0], mode="markers", name="Central body",
+                         marker=dict(color=th.ORANGE, size=16, symbol="star", line=dict(color="black", width=1))))
+st.subheader("Orbit path")
+st.caption("Relative coordinate, central body at the origin.")
 fig.update_layout(
-    title="Orbit in the relative coordinate (central body at origin)",
     xaxis_title="x (km)",
     yaxis_title="y (km)",
     yaxis=dict(scaleanchor="x", scaleratio=1),
     height=560,
+    margin=dict(l=10, r=10, t=10, b=10),
+    legend=dict(orientation="h", y=-0.15),
 )
 st.plotly_chart(fig, width="stretch")
 
@@ -124,14 +132,14 @@ drift_plot = np.where(drift > 0, drift, np.nan)  # log axis cannot show exact ze
 
 efig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
                      subplot_titles=("Energy", drift_label))
-efig.add_trace(go.Scatter(x=t_h, y=res.kinetic, name="Kinetic"), row=1, col=1)
-efig.add_trace(go.Scatter(x=t_h, y=res.potential, name="Potential"), row=1, col=1)
-efig.add_trace(go.Scatter(x=t_h, y=res.energy, name="Total", line=dict(width=3, color="black")), row=1, col=1)
-efig.add_trace(go.Scatter(x=t_h, y=drift_plot, name="Drift", line=dict(color="crimson")), row=2, col=1)
+efig.add_trace(go.Scatter(x=t_h, y=res.kinetic, name="Kinetic", line=dict(color=th.ORANGE, dash="dash")), row=1, col=1)
+efig.add_trace(go.Scatter(x=t_h, y=res.potential, name="Potential", line=dict(color=th.SKY_BLUE, dash="dot")), row=1, col=1)
+efig.add_trace(go.Scatter(x=t_h, y=res.energy, name="Total", line=dict(width=3, color=th.BLACK)), row=1, col=1)
+efig.add_trace(go.Scatter(x=t_h, y=drift_plot, name="Drift", line=dict(color=th.VERMILLION)), row=2, col=1)
 efig.update_yaxes(title_text="Energy (J)", row=1, col=1)
 efig.update_yaxes(title_text="Relative drift", type="log", exponentformat="power", row=2, col=1)
 efig.update_xaxes(title_text="Time (hours)", row=2, col=1)
-efig.update_layout(height=620)
+efig.update_layout(height=620, margin=dict(l=10, r=10, t=40, b=10), legend=dict(orientation="h", y=-0.12))
 st.plotly_chart(efig, width="stretch")
 st.caption(f"Maximum drift over the run: {np.nanmax(drift):.2e}")
 

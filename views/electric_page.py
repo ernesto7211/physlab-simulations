@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from physlab import electric as el
+from physlab import theme as th
+from physlab.ui import page_header
 
 DEFAULT_HW = 5.0
 DEFAULT_RMIN = 0.2
@@ -28,8 +30,7 @@ if "n_charges" not in st.session_state:
     st.session_state.setdefault("r_min", DEFAULT_RMIN)
     _apply_preset()
 
-st.title("Electric Field and Potential")
-st.caption("Static point charges in vacuum, in the plane z = 0 (3D Coulomb law). No induced charges.")
+page_header("electric", "Static point charges in vacuum, in the plane z = 0 (3D Coulomb law). No induced charges.")
 
 with st.sidebar:
     st.header("Charges")
@@ -104,7 +105,7 @@ if show_eq:
             x=X[0], y=Y[:, 0], z=v, customdata=emag, name="V",
             contours=dict(start=start, end=end, size=size, coloring="lines", showlabels=True,
                           labelfont=dict(size=10)),
-            line=dict(width=1.5), colorscale="RdBu_r", zmin=start, zmax=end,
+            line=dict(width=1.5), colorscale=th.SCALE_DIVERGING, zmin=start, zmax=end,
             colorbar=dict(title=dict(text="V (volts)", side="bottom"), orientation="h",
                           x=0.5, xanchor="center", y=-0.16, yanchor="top", len=0.9, thickness=12),
             hovertemplate="x=%{x:.3f} m<br>y=%{y:.3f} m<br>V=%{z:.4g} V<br>|E|=%{customdata:.4g} V/m<extra></extra>",
@@ -119,7 +120,7 @@ if show_vec:
     vex, vey, _ = el.field_at_points(q_C, pos, vx, vy, r_min)
     vmag = np.hypot(vex, vey)
     bins, edges = el.log_magnitude_bins(vmag, 6)
-    palette = pc.sample_colorscale("Viridis", np.linspace(0.05, 0.95, 6))
+    palette = pc.sample_colorscale(th.SCALE_SEQUENTIAL, np.linspace(0.05, 0.95, 6))
     length = 0.7 * (2 * hw / (nv - 1))
     for b in range(6):
         sel = bins == b
@@ -131,7 +132,7 @@ if show_vec:
     if edges.size:  # dummy trace carries the |E| colour bar (binned log scale)
         fig.add_trace(go.Scatter(
             x=[None], y=[None], mode="markers", hoverinfo="skip", showlegend=False,
-            marker=dict(colorscale="Viridis", cmin=np.log10(edges[0]), cmax=np.log10(edges[-1]),
+            marker=dict(colorscale=th.SCALE_SEQUENTIAL, cmin=np.log10(edges[0]), cmax=np.log10(edges[-1]),
                         color=[np.log10(edges[0])], showscale=True,
                         colorbar=dict(title=dict(text="log10 |E| (V/m), arrows normalised", side="bottom"),
                                       orientation="h", x=0.5, xanchor="center",
@@ -161,13 +162,17 @@ if show_lines:
                                              color="rgba(40,40,40,0.9)")))
 
 # charge markers (all charges, including q = 0 shown in grey)
-for sign, name, color in ((1, "Positive charge", "#d62728"), (-1, "Negative charge", "#1f77b4"), (0, "Zero charge", "grey")):
+for sign, name, color, symbol in (
+    (1, "Positive charge (+)", th.VERMILLION, "circle"),
+    (-1, "Negative charge (-)", th.BLUE, "square"),
+    (0, "Zero charge", "grey", "diamond"),
+):
     idx = [i for i, q in enumerate(qs) if np.sign(q) == sign]
     if idx:
         fig.add_trace(go.Scatter(
             x=[xs[i] for i in idx], y=[ys[i] for i in idx], mode="markers+text", name=name,
             text=[f"{qs[i]:+g} µC" for i in idx], textposition="top center",
-            marker=dict(color=color, size=9, line=dict(color="black", width=1.5)),
+            marker=dict(color=color, size=10, symbol=symbol, line=dict(color="black", width=1.5)),
             hovertemplate="charge %{text}<br>x=%{x:.3f} m, y=%{y:.3f} m<extra></extra>",
         ))
 

@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from physlab import pendulum as pn
+from physlab import theme as th
+from physlab.ui import page_header
 
 DEFAULTS = dict(
     th1_deg=120.0, th2_deg=-10.0, L1=1.0, L2=1.0, m1=1.0, m2=1.0, g=9.81,
@@ -13,8 +15,7 @@ DEFAULTS = dict(
 for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
-st.title("Double Pendulum")
-st.caption("Ideal massless rods, point masses, no friction. Angles from the downward vertical.")
+page_header("pendulum", "Ideal massless rods, point masses, no friction. Angles from the downward vertical.")
 
 with st.sidebar:
     st.header("Pendulum parameters")
@@ -90,11 +91,11 @@ def frame_traces(k):
 fig = go.Figure(
     data=[
         go.Scatter(x=ref.x2[:1], y=ref.y2[:1], mode="lines", name="Bob 2 trail",
-                   line=dict(color="crimson", width=1.5)),
+                   line=dict(color=th.VERMILLION, width=1.5)),
         go.Scatter(x=[0, ref.x1[0], ref.x2[0]], y=[0, ref.y1[0], ref.y2[0]], mode="lines",
                    name="Rods", line=dict(color="black", width=3)),
         go.Scatter(x=[ref.x1[0], ref.x2[0]], y=[ref.y1[0], ref.y2[0]], mode="markers",
-                   name="Bobs", marker=dict(color=["#1f77b4", "#d62728"], size=14)),
+                   name="Bobs", marker=dict(color=[th.BLUE, th.ORANGE], size=14, line=dict(color="black", width=1))),
     ],
     frames=[go.Frame(data=frame_traces(k), traces=[0, 1, 2], name=str(k)) for k in range(len(idx))],
 )
@@ -127,8 +128,8 @@ st.plotly_chart(fig, width="stretch")
 
 # --- overlaid paths --------------------------------------------------------
 pf = go.Figure()
-pf.add_trace(go.Scatter(x=ref.x2, y=ref.y2, mode="lines", name="Original", line=dict(color="#1f77b4", width=1.5)))
-pf.add_trace(go.Scatter(x=per.x2, y=per.y2, mode="lines", name="Perturbed", line=dict(color="#ff7f0e", width=1.5)))
+pf.add_trace(go.Scatter(x=ref.x2, y=ref.y2, mode="lines", name="Original", line=dict(color=th.BLUE, width=1.5)))
+pf.add_trace(go.Scatter(x=per.x2, y=per.y2, mode="lines", name="Perturbed", line=dict(color=th.ORANGE, width=1.5, dash="dot")))
 pf.update_layout(
     title="Second-bob paths",
     xaxis_title="x (m)", yaxis_title="y (m)",
@@ -139,7 +140,7 @@ st.plotly_chart(pf, width="stretch")
 
 # --- separation (log) ------------------------------------------------------
 sep = np.where(div.separation > 0, div.separation, np.nan)
-sf = go.Figure(go.Scatter(x=div.t, y=sep, mode="lines", name="Separation", line=dict(color="crimson")))
+sf = go.Figure(go.Scatter(x=div.t, y=sep, mode="lines", name="Separation", line=dict(color=th.VERMILLION)))
 sf.update_yaxes(type="log", exponentformat="power", title="√(Δθ₁²+Δθ₂²) (rad)")
 sf.update_xaxes(title="Time (s)")
 sf.update_layout(title="Angular separation of the two pendulums", height=380,
@@ -151,9 +152,9 @@ st.plotly_chart(sf, width="stretch")
 
 # --- energy drift ----------------------------------------------------------
 ef = go.Figure()
-for name, res, color in (("Original", ref, "#1f77b4"), ("Perturbed", per, "#ff7f0e")):
+for name, res, color, dash in (("Original", ref, th.BLUE, "solid"), ("Perturbed", per, th.ORANGE, "dot")):
     ef.add_trace(go.Scatter(x=res.t, y=np.where(res.energy_drift > 0, res.energy_drift, np.nan),
-                            mode="lines", name=name, line=dict(color=color)))
+                            mode="lines", name=name, line=dict(color=color, dash=dash)))
 ef.update_yaxes(type="log", exponentformat="power", title="|E(t)−E(0)|/|E(0)|")
 ef.update_xaxes(title="Time (s)")
 ef.update_layout(title="Relative energy drift", height=380,
