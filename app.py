@@ -1,4 +1,4 @@
-"""PhysLab: Interactive Numerical Physics Simulations (homepage + navigation)."""
+﻿"""PhysLab: Interactive Numerical Physics Simulations (homepage + navigation)."""
 
 import streamlit as st
 
@@ -15,7 +15,7 @@ def home() -> None:
     st.markdown(
         "- **Two-body orbital mechanics** — interactive page available.\n"
         "- **Double pendulum** — interactive page available.\n"
-        "- **Electric fields from point charges** — planned."
+        "- **Electric fields from point charges** — interactive page available."
     )
 
 
@@ -23,8 +23,9 @@ def home() -> None:
 pg = st.navigation(
     [
         st.Page(home, title="Home", icon="🏠", default=True),
-        st.Page("pages/orbital_page.py", title="Orbital Mechanics", icon="🪐"),
-        st.Page("pages/pendulum_page.py", title="Double Pendulum", icon="🌀"),
+        st.Page("views/orbital_page.py", title="Orbital Mechanics", icon="🪐"),
+        st.Page("views/pendulum_page.py", title="Double Pendulum", icon="🌀"),
+        st.Page("views/electric_page.py", title="Electric Fields", icon="⚡"),
     ]
 )
 pg.run()
